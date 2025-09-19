@@ -1,8 +1,6 @@
+// Trabalho analisador léxico MicroPascal
 
-// lexer_int_scanf_main.c - analisador léxico para inteiros e + - * / ( )
-// Compilar: gcc -std=c11 -O2 lexer_int_scanf_main.c -o lexer_int
-// Testar:   echo "12*(3+4) - 5/2" | ./lexer_int
-
+// Imports
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,16 +9,16 @@
 /* ========================= Definições de Variáveis ========================= */
 typedef enum {
     // Operadores
-    OP_EQ,     // = 
-    OP_GE,     // >=  
+    OP_EQ,     //  = 
+    OP_GE,     //  >=  
     OP_MUL,    //  * 
-    OP_NE,     // <>  
-    OP_LE,     // <=  
+    OP_NE,     //  <>  
+    OP_LE,     //  <=  
     OP_DIV,    //  / 
-    OP_GT,     // >  
-    OP_AD,     // +  
-    OP_ASS,    //  = 
-    OP_LT,     // <  
+    OP_GT,     //  >  
+    OP_AD,     //  +  
+    OP_ASS,    //  := 
+    OP_LT,     //  <  
     OP_MIN,    //  - 
 
     // Símbolos  
@@ -32,22 +30,22 @@ typedef enum {
     SMB_CPA,   //  )
 
     // Palavras-Chave
-    KW_PROGRAM,
-    KW_VAR,
-    KW_INTEGER,
-    KW_REAL,
-    KW_BEGIN,
-    KW_END,
-    KW_IF,
-    KW_THEN,
-    KW_ELSE,
-    KW_WHILE,
-    KW_DO,
+    KW_PROGRAM,  //  program
+    KW_VAR,      //  var
+    KW_INTEGER,  //  integer  
+    KW_REAL,     //  real
+    KW_BEGIN,    //  begin
+    KW_END,      //  end
+    KW_IF,       //  if
+    KW_THEN,     //  then  
+    KW_ELSE,     //  else
+    KW_WHILE,    //  while
+    KW_DO,       //  do
     
     // Identificadores e literais
-    ID,
-    NUM_INT,
-    NUM_REAL,
+    ID,          // Palavra
+    NUM_INT,     // Numero Inteiro
+    NUM_REAL,    // Numero Real
     
     // Especiais
     END_TOKEN,
@@ -64,30 +62,63 @@ typedef struct {
 
 // Struct do Scanner
 typedef struct {
-    const char *src;
-    int i;
+    const char *src;        // 
+    int i;                  // 
     int linha, coluna;      // Posição
-    char caractere;                 // Caractere
+    char caractere;         // Caractere
 } Scanner;                  // Tipo da variável: Scanner
 
 // ======================================= Métodos =======================================
 
-char* nome_token(TipoToken t){
-    switch(t){
-        case NUM_INT:   return "INTEIRO";
-        case OP_AD:      return "MAIS";
-        case OP_MIN:     return "MENOS";
-        case OP_MUL:      return "MULT";
-        case OP_DIV:       return "DIV";
-        case SMB_OPA:  return "ABRE_PAR";
-        case SMB_CPA: return "FECHA_PAR";
+char* nome_token(TipoToken tipo){
+    switch(tipo){
+        // Operadores
+        case OP_EQ:     return  "IGUAL"; 
+        case OP_GE:     return  "MAIOR_IG";  
+        case OP_MUL:    return  "MULT"; 
+        case OP_NE:     return  "DIFERENTE";  
+        case OP_LE:     return  "MENOR_IG";  
+        case OP_DIV:    return  "DIV";
+        case OP_GT:     return  "MAIOR_Q";  
+        case OP_AD:     return  "MAIS";  
+        case OP_ASS:    return  "ATRIBUI";
+        case OP_LT:     return  "MENOR_Q";  
+        case OP_MIN:    return  "MENOS";
+
+        // Símbolos
+        case SMB_OBC:   return "ABRE_CHA";
+        case SMB_COM:   return "VIRGULA";
+        case SMB_CBC:   return "FECHA_CHA";
+        case SMB_SEM:   return "PONTO_VIR";
+        case SMB_OPA:   return "ABRE_PAR";
+        case SMB_CPA:   return "FECHA_PAR";
+
+        // Palavras-Chave
+        case KW_PROGRAM:  return "PROGRAM";
+        case KW_VAR:      return "VAR";
+        case KW_INTEGER:  return "INTEGER"; 
+        case KW_REAL:     return "REAL";
+        case KW_BEGIN:    return "BEGIN";
+        case KW_END:      return "END";
+        case KW_IF:       return "IF";
+        case KW_THEN:     return "THEN"; 
+        case KW_ELSE:     return "ELSE";
+        case KW_WHILE:    return "WHILE";
+        case KW_DO:       return "DO";
+
+        // Identificadores e literais
+        case ID:          return "ID";
+        case NUM_INT:     return "INTEIRO";
+        case NUM_REAL:    return "REAL";
+
+        // Especiais
         case END_TOKEN:       return "FIM";
-        case ERROR_TOKEN:      return "ERRO";
+        case ERROR_TOKEN:     return "ERRO";
         default:              return "?";
     }
 }
 
-// Função que tem como retorno um ponteiro para o primeiro caractere de uma String
+// Função que tem como retorno um ponteiro para o primeiro caractere de um Token
 char *str_ndup(const char *s, size_t n){
     char *p = (char*)malloc(n+1);
     if(!p){ fprintf(stderr,"Memória insuficiente\n"); exit(1); }
@@ -97,6 +128,7 @@ char *str_ndup(const char *s, size_t n){
 // Inicia o Scanner
 void iniciar(Scanner *sc, const char *texto, int LinhaAntiga){
     sc->src = texto ? texto : "";
+    sc->i = 0; 
     sc->linha = LinhaAntiga; 
     sc->coluna = 1;
     sc->caractere = sc->src[0];
@@ -113,7 +145,7 @@ void avancar(Scanner *sc){
 
 // Scanner pula espaços
 void pular_espacos(Scanner *sc){
-    while(isspace((unsigned char)sc->caractere)) avancar(sc); //unsigned char são caracteres como \n
+    while(isspace((unsigned char)sc->caractere)) avancar(sc);
 }
 
 
@@ -150,18 +182,16 @@ Token coletar_inteiro(Scanner *sc){
 
 // Avança para o próximo Token
 Token proximo_token(Scanner *sc){
-    // Primeiro pula todos os espaços
     pular_espacos(sc);
-    //
     if(sc->caractere=='\0') return criar_token_texto(sc, END_TOKEN, "", 0, sc->linha, sc->coluna);
-    //
+
     if(isdigit((unsigned char)sc->caractere)) return coletar_inteiro(sc);
-    // 
+
     switch(sc->caractere){
         case '+': return token_simples(sc, OP_AD);
         case '-': return token_simples(sc, OP_MIN);
         case '*': return token_simples(sc, OP_MUL);
-        case '/': return token_simples(sc, OP_MUL);
+        case '/': return token_simples(sc, OP_DIV);
         case '(': return token_simples(sc, SMB_OPA);
         case ')': return token_simples(sc, SMB_CPA);
         default: {
