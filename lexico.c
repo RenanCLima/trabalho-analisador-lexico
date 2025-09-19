@@ -1,199 +1,264 @@
-// Trabalho analisador léxico MicroPascal
-
-// Imports
+// Para rodar o código no terminal BASH primeiro utilize: gcc lexico.c -o lexico.exe
+// Em seguida utilize no terminal: ./lexico.exe arquivo_entrada.pas arquivo_saida.lex
+// ======================================= imports =======================================
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-/* ========================= Definições de Variáveis ========================= */
+// ======================================= Definições =======================================
+#define MAX_SOURCE_SIZE 10000
+
+// --------------------------------------- Definições de Variáveis ---------------------------------------
 typedef enum {
-    // Operadores
-    OP_EQ,     //  = 
-    OP_GE,     //  >=  
-    OP_MUL,    //  * 
-    OP_NE,     //  <>  
-    OP_LE,     //  <=  
-    OP_DIV,    //  / 
-    OP_GT,     //  >  
-    OP_AD,     //  +  
-    OP_ASS,    //  := 
-    OP_LT,     //  <  
-    OP_MIN,    //  - 
-
-    // Símbolos  
-    SMB_OBC,   //  { 
-    SMB_COM,   //  , 
-    SMB_CBC,   //  } 
-    SMB_SEM,   //  ; 
-    SMB_OPA,   //  ( 
-    SMB_CPA,   //  )
-
-    // Palavras-Chave
-    KW_PROGRAM,  //  program
-    KW_VAR,      //  var
-    KW_INTEGER,  //  integer  
-    KW_REAL,     //  real
-    KW_BEGIN,    //  begin
-    KW_END,      //  end
-    KW_IF,       //  if
-    KW_THEN,     //  then  
-    KW_ELSE,     //  else
-    KW_WHILE,    //  while
-    KW_DO,       //  do
+    // Palavras-chave
+    KW_PROGRAM, //  program
+    KW_VAR,     //  var
+    KW_INTEGER, //  integer
+    KW_REAL,    //  real
+    KW_BEGIN,   //  begin
+    KW_END,     //  end
+    KW_IF,      //  if
+    KW_THEN,    //  then
+    KW_ELSE,    //  else
+    KW_WHILE,   //  while
+    KW_DO,      //  do
     
-    // Identificadores e literais
-    ID,          // Palavra
-    NUM_INT,     // Numero Inteiro
-    NUM_REAL,    // Numero Real
+    // Operadores
+    OP_ASSIGN,  //  =:
+    OP_EQ,      //  =
+    OP_LT,      //  <
+    OP_GT,      //  >
+    OP_LE,      //  <=
+    OP_GE,      //  >=
+    OP_NE,      //  <>
+    OP_PLUS,    //  +
+    OP_MINUS,   //  -
+    OP_MUL,     //  *
+    OP_DIV,     //  /
+    
+    // Símbolos
+    SMB_SEMICOLON,  //  ;
+    SMB_COMMA,      //  ,
+    SMB_DOT,        //  .
+    SMB_COLON,      //  :
+    SMB_LPAREN,     //  (
+    SMB_RPAREN,     //  )
+    SMB_LBRACK,     //  {
+    SMB_RBRACK,     //  }
+    
+    // Literais e identificadores
+    IDENTIFIER,     //  Identificador
+    NUM_INT,        //  Número inteiro
+    NUM_REAL,       //  Número Real
     
     // Especiais
-    END_TOKEN,
-    ERROR_TOKEN
-} TipoToken;                // Tipo da variável: TipoToken
+    END_TOKEN,      //  final do código
+    ERROR_TOKEN     //  erro do código
+} TipoToken;
 
-// Struct é como um Array com diferentes tipos de variáveis (por isso tem um TipoToken, char *, int)
+// --------------------------------------- Definições de structs ---------------------------------------
 typedef struct {
-    TipoToken tipo;         // Tipo declarado acima
-    char *lexema;           // 
-    int linha;              // Linha do Token
-    int coluna;             // Coluna do Token
-} Token;                    // Tipo da variável: Token
+    TipoToken tipo;
+    char *lexema;
+    int linha;
+    int coluna;
+} Token;
 
-// Struct do Scanner
 typedef struct {
-    const char *src;        // 
-    int i;                  // 
-    int linha, coluna;      // Posição
-    char caractere;         // Caractere
-} Scanner;                  // Tipo da variável: Scanner
+    const char *src;
+    int i;
+    int linha, coluna;
+    char caractere;
+} Scanner;
 
 // ======================================= Métodos =======================================
-
-char* nome_token(TipoToken tipo){
-    switch(tipo){
-        // Operadores
-        case OP_EQ:     return  "IGUAL"; 
-        case OP_GE:     return  "MAIOR_IG";  
-        case OP_MUL:    return  "MULT"; 
-        case OP_NE:     return  "DIFERENTE";  
-        case OP_LE:     return  "MENOR_IG";  
-        case OP_DIV:    return  "DIV";
-        case OP_GT:     return  "MAIOR_Q";  
-        case OP_AD:     return  "MAIS";  
-        case OP_ASS:    return  "ATRIBUI";
-        case OP_LT:     return  "MENOR_Q";  
-        case OP_MIN:    return  "MENOS";
-
-        // Símbolos
-        case SMB_OBC:   return "ABRE_CHA";
-        case SMB_COM:   return "VIRGULA";
-        case SMB_CBC:   return "FECHA_CHA";
-        case SMB_SEM:   return "PONTO_VIR";
-        case SMB_OPA:   return "ABRE_PAR";
-        case SMB_CPA:   return "FECHA_PAR";
-
-        // Palavras-Chave
-        case KW_PROGRAM:  return "PROGRAM";
-        case KW_VAR:      return "VAR";
-        case KW_INTEGER:  return "INTEGER"; 
-        case KW_REAL:     return "REAL";
-        case KW_BEGIN:    return "BEGIN";
-        case KW_END:      return "END";
-        case KW_IF:       return "IF";
-        case KW_THEN:     return "THEN"; 
-        case KW_ELSE:     return "ELSE";
-        case KW_WHILE:    return "WHILE";
-        case KW_DO:       return "DO";
-
-        // Identificadores e literais
-        case ID:          return "ID";
-        case NUM_INT:     return "INTEIRO";
-        case NUM_REAL:    return "REAL";
-
-        // Especiais
-        case END_TOKEN:       return "FIM";
-        case ERROR_TOKEN:     return "ERRO";
-        default:              return "?";
+char* nome_token(TipoToken t) {
+    switch(t) {
+        case KW_PROGRAM: return "PROGRAM";
+        case KW_VAR: return "VAR";
+        case KW_INTEGER: return "INTEGER";
+        case KW_REAL: return "REAL";
+        case KW_BEGIN: return "BEGIN";
+        case KW_END: return "END";
+        case KW_IF: return "IF";
+        case KW_THEN: return "THEN";
+        case KW_ELSE: return "ELSE";
+        case KW_WHILE: return "WHILE";
+        case KW_DO: return "DO";
+        case OP_ASSIGN: return "ASSIGN";
+        case OP_EQ: return "EQUAL";
+        case OP_LT: return "LESS";
+        case OP_GT: return "GREATER";
+        case OP_LE: return "LESS_EQUAL";
+        case OP_GE: return "GREATER_EQUAL";
+        case OP_NE: return "NOT_EQUAL";
+        case OP_PLUS: return "PLUS";
+        case OP_MINUS: return "MINUS";
+        case OP_MUL: return "MULT";
+        case OP_DIV: return "DIV";
+        case SMB_SEMICOLON: return "SEMICOLON";
+        case SMB_COMMA: return "COMMA";
+        case SMB_DOT: return "DOT";
+        case SMB_COLON: return "COLON";
+        case SMB_LPAREN: return "LPAREN";
+        case SMB_RPAREN: return "RPAREN";
+        case SMB_LBRACK: return "LBRACK";
+        case SMB_RBRACK: return "RBRACK";
+        case IDENTIFIER: return "IDENTIFIER";
+        case NUM_INT: return "INTEGER_LITERAL";
+        case NUM_REAL: return "REAL_LITERAL";
+        case END_TOKEN: return "EOF";
+        case ERROR_TOKEN: return "ERROR";
+        default: return "?";
     }
 }
 
-// Função que tem como retorno um ponteiro para o primeiro caractere de um Token
-char *str_ndup(const char *s, size_t n){
-    char *p = (char*)malloc(n+1);
-    if(!p){ fprintf(stderr,"Memória insuficiente\n"); exit(1); }
-    memcpy(p, s, n); p[n]='\0'; return p;
+// Cria uma cópia da String e armazena a cópia em um espaço na memória (Será o token)
+char *str_ndup(const char *s, size_t n) {
+    char *p = (char*)malloc(n + 1);
+    if (!p) { fprintf(stderr, "Memória insuficiente\n"); exit(1); }
+    memcpy(p, s, n); p[n] = '\0';
+    return p;
 }
 
-// Inicia o Scanner
-void iniciar(Scanner *sc, const char *texto, int LinhaAntiga){
+// Cria um Token
+Token criar_token_texto(TipoToken tipo, const char *ini, size_t n, int lin, int col) {
+    Token t;
+    t.tipo = tipo;
+    t.lexema = str_ndup(ini, n);
+    t.linha = lin;
+    t.coluna = col;
+    return t;
+}
+
+// Inicia um Scanner que analisa o token como um todo, a linha atual, coluna atual e o caractere do token atual.
+void iniciar(Scanner *sc, const char *texto, int linha_inicial) {
     sc->src = texto ? texto : "";
-    sc->i = 0; 
-    sc->linha = LinhaAntiga; 
+    sc->linha = linha_inicial;
     sc->coluna = 1;
+    sc->i = 0;
     sc->caractere = sc->src[0];
 }
 
-// Avança o Scanner
-void avancar(Scanner *sc){
-    if(sc->caractere=='\0') return;
-    if(sc->caractere=='\n'){ sc->linha++; sc->coluna=1; }
-    else           { sc->coluna++; }
+// Avança o scanner para a direita, caso tenha um \n ele vai para a linha seguinte e volta a coluna 1. Caso encontre um \0  ele finaliza o Token
+void avancar(Scanner *sc) {
+    if (sc->caractere == '\0') return;
+    if (sc->caractere == '\n') { sc->linha++; sc->coluna = 1; }
+    else { sc->coluna++; };
     sc->i++;
     sc->caractere = sc->src[sc->i];
 }
 
-// Scanner pula espaços
-void pular_espacos(Scanner *sc){
-    while(isspace((unsigned char)sc->caractere)) avancar(sc);
+// Pula espaços em branco
+void pular_espacos(Scanner *sc) {
+    while (isspace((unsigned char)sc->caractere)) avancar(sc);
 }
 
 
-// Token Texto
-Token criar_token_texto(Scanner *sc, TipoToken tipo, const char *ini, size_t n, int lin, int col){
-    (void)sc;
-    Token t; t.tipo=tipo;
-    t.lexema=str_ndup(ini,n); 
-    t.linha=lin; t.coluna=col; 
-    return t;
+// ------------------------------------------- Métodos de Tokens -------------------------------------------
+// Cria um token utilizando como ponteiro a linha e coluna do primeiro caractere do Token
+Token token_simples(Scanner *sc, TipoToken tipo) {
+    int lin = sc->linha, col = sc->coluna;
+    char ch = sc->caractere;
+    avancar(sc);
+    return criar_token_texto(tipo, &ch, 1, lin, col);
 }
 
-// Token Simples
-Token token_simples(Scanner *sc, TipoToken tipo){
-    int lin=sc->linha, col=sc->coluna;
-    char ch=sc->caractere; avancar(sc);
-    return criar_token_texto(sc, tipo, &ch, 1, lin, col);
+// Cria um token de erro e retorna a linha e coluna onde encontrou o erro
+Token token_erro_msg(Scanner *sc, const char *msg) {
+    return criar_token_texto(ERROR_TOKEN, msg, strlen(msg), sc->linha, sc->coluna);
 }
 
-// Token mensagem de erro 
-Token token_erro_msg(Scanner *sc, const char *msg){
-    return criar_token_texto(sc, ERROR_TOKEN, msg, strlen(msg), sc->linha, sc->coluna);
+// Verifica se a palavra é um Token específico ou um Identifier
+TipoToken verificar_palavra_chave(const char *lexema) {
+    if (strcmp(lexema, "program") == 0) return KW_PROGRAM;
+    if (strcmp(lexema, "var") == 0) return KW_VAR;
+    if (strcmp(lexema, "integer") == 0) return KW_INTEGER;
+    if (strcmp(lexema, "real") == 0) return KW_REAL;
+    if (strcmp(lexema, "begin") == 0) return KW_BEGIN;
+    if (strcmp(lexema, "end") == 0) return KW_END;
+    if (strcmp(lexema, "if") == 0) return KW_IF;
+    if (strcmp(lexema, "then") == 0) return KW_THEN;
+    if (strcmp(lexema, "else") == 0) return KW_ELSE;
+    if (strcmp(lexema, "while") == 0) return KW_WHILE;
+    if (strcmp(lexema, "do") == 0) return KW_DO;
+    return IDENTIFIER;
 }
 
-// Token número inteiro
-Token coletar_inteiro(Scanner *sc){
-    int lin=sc->linha, col=sc->coluna;
+// 
+Token coletar_identificador(Scanner *sc) {
+    int lin = sc->linha, col = sc->coluna;
     size_t ini = sc->i;
-    if(!isdigit((unsigned char)sc->caractere)) return token_erro_msg(sc, "Inteiro malformado");
-    while(isdigit((unsigned char)sc->caractere)) avancar(sc);
-    return criar_token_texto(sc, NUM_INT, sc->src+ini, sc->i-ini, lin, col);
+    while (isalnum((unsigned char)sc->caractere)) avancar(sc);
+    size_t len = sc->i - ini;
+    TipoToken tipo = verificar_palavra_chave(sc->src + ini);
+    return criar_token_texto(tipo, sc->src + ini, len, lin, col);
 }
 
+// Token número, verifica se tem um . ou não, assim definindo se é um número REAL ou número INT
+Token coletar_numero(Scanner *sc) {
+    int lin = sc->linha, col = sc->coluna;
+    size_t ini = sc->i;
+    int tem_ponto = 0;
+    while (isdigit((unsigned char)sc->caractere) || sc->caractere == '.') {
+        if (sc->caractere == '.') {
+            if (tem_ponto) break;
+            tem_ponto = 1;
+        }
+        avancar(sc);
+    }
+    size_t len = sc->i - ini;
+    TipoToken tipo = tem_ponto ? NUM_REAL : NUM_INT;
+    return criar_token_texto(tipo, sc->src + ini, len, lin, col);
+}
 
-// Avança para o próximo Token
-Token proximo_token(Scanner *sc){
+// Token operador, verifica o tipo de caractere e define seu tipo
+Token coletar_operador(Scanner *sc) {
+    int lin = sc->linha, col = sc->coluna;
+    char c = sc->caractere;
+    avancar(sc);
+    if (c == ':' && sc->caractere == '=') {
+        avancar(sc);
+        return criar_token_texto(OP_ASSIGN, ":=", 2, lin, col);
+    }
+    if (c == '<') {
+        if (sc->caractere == '=') { avancar(sc); return criar_token_texto(OP_LE, "<=", 2, lin, col); }
+        if (sc->caractere == '>') { avancar(sc); return criar_token_texto(OP_NE, "<>", 2, lin, col); }
+        return criar_token_texto(OP_LT, "<", 1, lin, col);
+    }
+    if (c == '>') {
+        if (sc->caractere == '=') { avancar(sc); return criar_token_texto(OP_GE, ">=", 2, lin, col); }
+        return criar_token_texto(OP_GT, ">", 1, lin, col);
+    }
+    if (c == '=') return criar_token_texto(OP_EQ, "=", 1, lin, col);
+    if (c == ':') return criar_token_texto(SMB_COLON, ":", 1, lin, col);
+    return token_erro_msg(sc, "Operador inválido");
+}
+
+// Busca o próximo Token, caso encontre um símbolo, define um Token
+Token proximo_token(Scanner *sc) {
     pular_espacos(sc);
-    if(sc->caractere=='\0') return criar_token_texto(sc, END_TOKEN, "", 0, sc->linha, sc->coluna);
+    if (sc->caractere == '\0') return criar_token_texto(END_TOKEN, "", 0, sc->linha, sc->coluna);
+    if (isalpha((unsigned char)sc->caractere)) return coletar_identificador(sc);
+    if (isdigit((unsigned char)sc->caractere))
+        return coletar_numero(sc);
 
-    if(isdigit((unsigned char)sc->caractere)) return coletar_inteiro(sc);
+    if (strchr(":<>=", sc->caractere))
+        return coletar_operador(sc);
 
-    switch(sc->caractere){
-        case '+': return token_simples(sc, OP_AD);
-        case '-': return token_simples(sc, OP_MIN);
+    switch (sc->caractere) {
+        case '+': return token_simples(sc, OP_PLUS);
+        case '-': return token_simples(sc, OP_MINUS);
         case '*': return token_simples(sc, OP_MUL);
         case '/': return token_simples(sc, OP_DIV);
-        case '(': return token_simples(sc, SMB_OPA);
-        case ')': return token_simples(sc, SMB_CPA);
+        case ';': return token_simples(sc, SMB_SEMICOLON);
+        case ',': return token_simples(sc, SMB_COMMA);
+        case '.': return token_simples(sc, SMB_DOT);
+        case '(': return token_simples(sc, SMB_LPAREN);
+        case ')': return token_simples(sc, SMB_RPAREN);
+        case '[': return token_simples(sc, SMB_LBRACK);
+        case ']': return token_simples(sc, SMB_RBRACK);
         default: {
             char msg[64];
             snprintf(msg, sizeof(msg), "Caractere inválido: '%c'", sc->caractere);
@@ -203,33 +268,47 @@ Token proximo_token(Scanner *sc){
     }
 }
 
-
-
-// ======================================= main =======================================
-
-int main(void){
-
-    FILE * fp = fopen("teste.mat", "r");
-    FILE * out = fopen("teste.lex", "a");
-    
-    char Entrada[1024];
-    int Linha = 1;
-
-    while(fscanf(fp, "%[^\n]\n", Entrada) > 0) {
-        Scanner S; 
-        strcat(Entrada, "\n");
-        printf("%s", Entrada);
-        iniciar(&S, Entrada, Linha);
-
-        for(;;){
-            Token t = proximo_token(&S);
-            fprintf(out, "(%s, %s) \t\t linha %d, col %d\n",
-                nome_token(t.tipo), t.lexema, Linha, t.coluna);
-            free(t.lexema);
-            if(t.tipo==END_TOKEN || t.tipo==ERROR_TOKEN) break;
-        }
-        Linha++;
+// ======================================= função main que testa os códigos =======================================
+int main(int argc, char *argv[]) {
+    if (argc < 3) {
+        printf("Uso: %s <arquivo_entrada.pas> <arquivo_saida.lex>\n", argv[0]);
+        return 1;
     }
 
+    FILE *fp = fopen(argv[1], "r");
+    if (!fp) {
+        printf("Erro ao abrir o arquivo de entrada: %s\n", argv[1]);
+        return 1;
+    }
+
+    FILE *out = fopen(argv[2], "w");
+    if (!out) {
+        printf("Erro ao criar o arquivo de saída: %s\n", argv[2]);
+        fclose(fp);
+        return 1;
+    }
+
+    char linha[1024];
+    int num_linha = 1;
+
+    while (fgets(linha, sizeof(linha), fp)) {
+        Scanner sc;
+        iniciar(&sc, linha, num_linha);
+
+        for (;;) {
+            Token t = proximo_token(&sc);
+            fprintf(out, "%s, %s\t\t\tlinha %d, col%d\n",
+                nome_token(t.tipo), t.lexema, t.linha, t.coluna);
+            free(t.lexema);
+            if (t.tipo == END_TOKEN || t.tipo == ERROR_TOKEN) break;
+        }
+
+        fprintf(out, "\n");
+        num_linha++;
+    }
+
+    fclose(fp);
+    fclose(out);
+    printf("Análise léxica concluída. Tokens salvos em '%s'.\n", argv[2]);
     return 0;
 }
