@@ -1,0 +1,5 @@
+program exemplo;
+begin
+  x := "string não fechada;
+  y := 10;
+end.
