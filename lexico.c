@@ -8,6 +8,8 @@
 
 // ======================================= Definições =======================================
 #define MAX_SOURCE_SIZE 10000
+#define MAX_TABELA_SIMBOLOS 1000
+#define MAX_LEXEMA 256
 
 // --------------------------------------- Definições de Variáveis ---------------------------------------
 typedef enum {
@@ -24,38 +26,41 @@ typedef enum {
     KW_WHILE,   //  while
     KW_DO,      //  do
     
-    // Operadores
-    OP_ASSIGN,  //  =:
-    OP_EQ,      //  =
-    OP_LT,      //  <
-    OP_GT,      //  >
-    OP_LE,      //  <=
-    OP_GE,      //  >=
-    OP_NE,      //  <>
-    OP_PLUS,    //  +
-    OP_MINUS,   //  -
-    OP_MUL,     //  *
-    OP_DIV,     //  /
+    // Operadores (conforme especificação)
+    OP_ASS,     //  := (atribuição)
+    OP_EQ,      //  =  (igual)
+    OP_LT,      //  <  (menor)
+    OP_GT,      //  >  (maior)
+    OP_LE,      //  <= (menor igual)
+    OP_GE,      //  >= (maior igual)
+    OP_NE,      //  <> (diferente)
+    OP_AD,      //  +  (soma)
+    OP_MIN,     //  -  (subtração)
+    OP_MUL,     //  *  (multiplicação)
+    OP_DIV,     //  /  (divisão)
     
-    // Símbolos
-    SMB_SEMICOLON,  //  ;
-    SMB_COMMA,      //  ,
-    SMB_DOT,        //  .
-    SMB_COLON,      //  :
-    SMB_LPAREN,     //  (
-    SMB_RPAREN,     //  )
-    SMB_LBRACK,     //  {
-    SMB_RBRACK,     //  }
+    // Símbolos (conforme especificação)
+    SMB_SEM,    //  ; (ponto e vírgula)
+    SMB_COM,    //  , (vírgula)
+    SMB_DOT,    //  . (ponto)
+    SMB_COLON,  //  : (dois pontos)
+    SMB_OPA,    //  ( (abre parênteses)
+    SMB_CPA,    //  ) (fecha parênteses)
+    SMB_OBC,    //  { (abre chaves)
+    SMB_CBC,    //  } (fecha chaves)
     
     // Literais e identificadores
-    IDENTIFIER,     //  Identificador
-    NUM_INT,        //  Número inteiro
-    NUM_REAL,       //  Número Real
+    ID,         //  Identificador
+    NUM_INT,    //  Número inteiro
+    NUM_REAL,   //  Número Real
     
     // Especiais
     END_TOKEN,      //  final do código
     ERROR_TOKEN     //  erro do código
 } TipoToken;
+
+// --------------------------------------- Declarações de Funções ---------------------------------------
+char* nome_token(TipoToken t);
 
 // --------------------------------------- Definições de structs ---------------------------------------
 typedef struct {
@@ -72,6 +77,107 @@ typedef struct {
     char caractere;
 } Scanner;
 
+// --------------------------------------- Tabela de Símbolos ---------------------------------------
+typedef struct {
+    char lexema[MAX_LEXEMA];
+    TipoToken tipo;
+} EntradaTS;
+
+typedef struct {
+    EntradaTS entradas[MAX_TABELA_SIMBOLOS];
+    int tamanho;
+} TabelaSimbolos;
+
+// Inicializa a tabela de símbolos com palavras reservadas
+TabelaSimbolos tabela_simbolos;
+
+void inicializar_tabela_simbolos() {
+    tabela_simbolos.tamanho = 0;
+    
+    // Adiciona palavras reservadas
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "program");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_PROGRAM;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "var");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_VAR;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "integer");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_INTEGER;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "real");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_REAL;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "begin");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_BEGIN;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "end");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_END;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "if");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_IF;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "then");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_THEN;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "else");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_ELSE;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "while");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_WHILE;
+    tabela_simbolos.tamanho++;
+    
+    strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, "do");
+    tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = KW_DO;
+    tabela_simbolos.tamanho++;
+}
+
+// Busca na tabela de símbolos
+TipoToken buscar_tabela_simbolos(const char *lexema) {
+    for (int i = 0; i < tabela_simbolos.tamanho; i++) {
+        if (strcasecmp(tabela_simbolos.entradas[i].lexema, lexema) == 0) {
+            return tabela_simbolos.entradas[i].tipo;
+        }
+    }
+    return ID; // Se não encontrou, é identificador
+}
+
+// Adiciona identificador na tabela de símbolos
+void adicionar_identificador_ts(const char *lexema) {
+    // Verifica se já existe
+    for (int i = 0; i < tabela_simbolos.tamanho; i++) {
+        if (strcasecmp(tabela_simbolos.entradas[i].lexema, lexema) == 0) {
+            return; // Já existe, não adiciona
+        }
+    }
+    
+    // Adiciona novo identificador
+    if (tabela_simbolos.tamanho < MAX_TABELA_SIMBOLOS) {
+        strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, lexema);
+        tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = ID;
+        tabela_simbolos.tamanho++;
+    }
+}
+
+// Imprime tabela de símbolos
+void imprimir_tabela_simbolos(FILE *out) {
+    fprintf(out, "\n======= TABELA DE SÍMBOLOS =======\n");
+    for (int i = 0; i < tabela_simbolos.tamanho; i++) {
+        fprintf(out, "%s - %s\n", 
+                tabela_simbolos.entradas[i].lexema,
+                nome_token(tabela_simbolos.entradas[i].tipo));
+    }
+    fprintf(out, "==================================\n\n");
+}
+
 // ======================================= Métodos =======================================
 char* nome_token(TipoToken t) {
     switch(t) {
@@ -86,28 +192,28 @@ char* nome_token(TipoToken t) {
         case KW_ELSE: return "ELSE";
         case KW_WHILE: return "WHILE";
         case KW_DO: return "DO";
-        case OP_ASSIGN: return "ASSIGN";
-        case OP_EQ: return "EQUAL";
-        case OP_LT: return "LESS";
-        case OP_GT: return "GREATER";
-        case OP_LE: return "LESS_EQUAL";
-        case OP_GE: return "GREATER_EQUAL";
-        case OP_NE: return "NOT_EQUAL";
-        case OP_PLUS: return "PLUS";
-        case OP_MINUS: return "MINUS";
-        case OP_MUL: return "MULT";
-        case OP_DIV: return "DIV";
-        case SMB_SEMICOLON: return "SEMICOLON";
-        case SMB_COMMA: return "COMMA";
-        case SMB_DOT: return "DOT";
-        case SMB_COLON: return "COLON";
-        case SMB_LPAREN: return "LPAREN";
-        case SMB_RPAREN: return "RPAREN";
-        case SMB_LBRACK: return "LBRACK";
-        case SMB_RBRACK: return "RBRACK";
-        case IDENTIFIER: return "IDENTIFIER";
-        case NUM_INT: return "INTEGER_LITERAL";
-        case NUM_REAL: return "REAL_LITERAL";
+        case OP_ASS: return "OP_ASS";
+        case OP_EQ: return "OP_EQ";
+        case OP_LT: return "OP_LT";
+        case OP_GT: return "OP_GT";
+        case OP_LE: return "OP_LE";
+        case OP_GE: return "OP_GE";
+        case OP_NE: return "OP_NE";
+        case OP_AD: return "OP_AD";
+        case OP_MIN: return "OP_MIN";
+        case OP_MUL: return "OP_MUL";
+        case OP_DIV: return "OP_DIV";
+        case SMB_SEM: return "SMB_SEM";
+        case SMB_COM: return "SMB_COM";
+        case SMB_DOT: return "SMB_DOT";
+        case SMB_COLON: return "SMB_COLON";
+        case SMB_OPA: return "SMB_OPA";
+        case SMB_CPA: return "SMB_CPA";
+        case SMB_OBC: return "SMB_OBC";
+        case SMB_CBC: return "SMB_CBC";
+        case ID: return "ID";
+        case NUM_INT: return "NUM_INT";
+        case NUM_REAL: return "NUM_REAL";
         case END_TOKEN: return "EOF";
         case ERROR_TOKEN: return "ERROR";
         default: return "?";
@@ -172,27 +278,28 @@ Token token_erro_msg(Scanner *sc, const char *msg) {
 
 // Verifica se a palavra é um Token específico ou um Identifier
 TipoToken verificar_palavra_chave(const char *lexema) {
-    if (strcmp(lexema, "program") == 0) return KW_PROGRAM;
-    if (strcmp(lexema, "var") == 0) return KW_VAR;
-    if (strcmp(lexema, "integer") == 0) return KW_INTEGER;
-    if (strcmp(lexema, "real") == 0) return KW_REAL;
-    if (strcmp(lexema, "begin") == 0) return KW_BEGIN;
-    if (strcmp(lexema, "end") == 0) return KW_END;
-    if (strcmp(lexema, "if") == 0) return KW_IF;
-    if (strcmp(lexema, "then") == 0) return KW_THEN;
-    if (strcmp(lexema, "else") == 0) return KW_ELSE;
-    if (strcmp(lexema, "while") == 0) return KW_WHILE;
-    if (strcmp(lexema, "do") == 0) return KW_DO;
-    return IDENTIFIER;
+    return buscar_tabela_simbolos(lexema);
 }
 
-// 
+// Coleta identificador e adiciona na tabela de símbolos se necessário
 Token coletar_identificador(Scanner *sc) {
     int lin = sc->linha, col = sc->coluna;
     size_t ini = sc->i;
     while (isalnum((unsigned char)sc->caractere)) avancar(sc);
     size_t len = sc->i - ini;
-    TipoToken tipo = verificar_palavra_chave(sc->src + ini);
+    
+    // Cria uma cópia do lexema para verificação
+    char lexema_temp[MAX_LEXEMA];
+    strncpy(lexema_temp, sc->src + ini, len);
+    lexema_temp[len] = '\0';
+    
+    TipoToken tipo = buscar_tabela_simbolos(lexema_temp);
+    
+    // Se for identificador, adiciona na tabela de símbolos
+    if (tipo == ID) {
+        adicionar_identificador_ts(lexema_temp);
+    }
+    
     return criar_token_texto(tipo, sc->src + ini, len, lin, col);
 }
 
@@ -220,7 +327,7 @@ Token coletar_operador(Scanner *sc) {
     avancar(sc);
     if (c == ':' && sc->caractere == '=') {
         avancar(sc);
-        return criar_token_texto(OP_ASSIGN, ":=", 2, lin, col);
+        return criar_token_texto(OP_ASS, ":=", 2, lin, col);
     }
     if (c == '<') {
         if (sc->caractere == '=') { avancar(sc); return criar_token_texto(OP_LE, "<=", 2, lin, col); }
@@ -236,6 +343,25 @@ Token coletar_operador(Scanner *sc) {
     return token_erro_msg(sc, "Operador inválido");
 }
 
+// Tratamento de strings (detecção de erro de string não-fechada)
+Token coletar_string(Scanner *sc) {
+    int lin = sc->linha, col = sc->coluna;
+    size_t ini = sc->i;
+    avancar(sc); // Pula a primeira aspas
+    
+    while (sc->caractere != '\0' && sc->caractere != '"' && sc->caractere != '\n') {
+        avancar(sc);
+    }
+    
+    if (sc->caractere == '\n' || sc->caractere == '\0') {
+        return token_erro_msg(sc, "String não-fechada antes de quebra de linha");
+    }
+    
+    avancar(sc); // Pula a última aspas
+    size_t len = sc->i - ini;
+    return criar_token_texto(ERROR_TOKEN, sc->src + ini, len, lin, col);
+}
+
 // Busca o próximo Token, caso encontre um símbolo, define um Token
 Token proximo_token(Scanner *sc) {
     pular_espacos(sc);
@@ -243,22 +369,23 @@ Token proximo_token(Scanner *sc) {
     if (isalpha((unsigned char)sc->caractere)) return coletar_identificador(sc);
     if (isdigit((unsigned char)sc->caractere))
         return coletar_numero(sc);
+    if (sc->caractere == '"') return coletar_string(sc);
 
     if (strchr(":<>=", sc->caractere))
         return coletar_operador(sc);
 
     switch (sc->caractere) {
-        case '+': return token_simples(sc, OP_PLUS);
-        case '-': return token_simples(sc, OP_MINUS);
+        case '+': return token_simples(sc, OP_AD);
+        case '-': return token_simples(sc, OP_MIN);
         case '*': return token_simples(sc, OP_MUL);
         case '/': return token_simples(sc, OP_DIV);
-        case ';': return token_simples(sc, SMB_SEMICOLON);
-        case ',': return token_simples(sc, SMB_COMMA);
+        case ';': return token_simples(sc, SMB_SEM);
+        case ',': return token_simples(sc, SMB_COM);
         case '.': return token_simples(sc, SMB_DOT);
-        case '(': return token_simples(sc, SMB_LPAREN);
-        case ')': return token_simples(sc, SMB_RPAREN);
-        case '[': return token_simples(sc, SMB_LBRACK);
-        case ']': return token_simples(sc, SMB_RBRACK);
+        case '(': return token_simples(sc, SMB_OPA);
+        case ')': return token_simples(sc, SMB_CPA);
+        case '{': return token_simples(sc, SMB_OBC);
+        case '}': return token_simples(sc, SMB_CBC);
         default: {
             char msg[64];
             snprintf(msg, sizeof(msg), "Caractere inválido: '%c'", sc->caractere);
@@ -275,6 +402,9 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Inicializa a tabela de símbolos
+    inicializar_tabela_simbolos();
+
     FILE *fp = fopen(argv[1], "r");
     if (!fp) {
         printf("Erro ao abrir o arquivo de entrada: %s\n", argv[1]);
@@ -288,6 +418,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    fprintf(out, "======= ANÁLISE LÉXICA - MICROPASCAL =======\n\n");
+
     char linha[1024];
     int num_linha = 1;
 
@@ -297,18 +429,23 @@ int main(int argc, char *argv[]) {
 
         for (;;) {
             Token t = proximo_token(&sc);
-            fprintf(out, "%s, %s\t\t\tlinha %d, col%d\n",
-                nome_token(t.tipo), t.lexema, t.linha, t.coluna);
+            if (t.tipo != END_TOKEN) {
+                fprintf(out, "<%s, %s>\t\t\tlinha %d, coluna %d\n",
+                    nome_token(t.tipo), t.lexema, t.linha, t.coluna);
+            }
             free(t.lexema);
             if (t.tipo == END_TOKEN || t.tipo == ERROR_TOKEN) break;
         }
 
-        fprintf(out, "\n");
         num_linha++;
     }
+
+    // Imprime a tabela de símbolos no final
+    imprimir_tabela_simbolos(out);
 
     fclose(fp);
     fclose(out);
     printf("Análise léxica concluída. Tokens salvos em '%s'.\n", argv[2]);
+    printf("Tabela de símbolos também foi salva no arquivo.\n");
     return 0;
 }
