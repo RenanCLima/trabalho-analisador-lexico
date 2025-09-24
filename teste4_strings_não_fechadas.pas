@@ -1,5 +1,5 @@
-program exemplo;
+PROGRAM exemplo;
 begin
   x := "string não fechada;
   y := 10;
-end.
+END.

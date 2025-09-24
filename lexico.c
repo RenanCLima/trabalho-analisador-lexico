@@ -287,21 +287,25 @@ Token coletar_identificador(Scanner *sc) {
     size_t ini = sc->i;
     while (isalnum((unsigned char)sc->caractere)) avancar(sc);
     size_t len = sc->i - ini;
-    
-    // Cria uma cópia do lexema para verificação
+
+    // Cria uma cópia do lexema
     char lexema_temp[MAX_LEXEMA];
     strncpy(lexema_temp, sc->src + ini, len);
     lexema_temp[len] = '\0';
-    
+
+    // Converte para minúsculo para garantir case insensitive
+    for (size_t i = 0; i < len; i++) {
+        lexema_temp[i] = (char)tolower((unsigned char)lexema_temp[i]);
+    }
     TipoToken tipo = buscar_tabela_simbolos(lexema_temp);
     
     // Se for identificador, adiciona na tabela de símbolos
     if (tipo == ID) {
         adicionar_identificador_ts(lexema_temp);
     }
-    
     return criar_token_texto(tipo, sc->src + ini, len, lin, col);
 }
+
 
 // Token número, verifica se tem um . ou não, assim definindo se é um número REAL ou número INT
 Token coletar_numero(Scanner *sc) {

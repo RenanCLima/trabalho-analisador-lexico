@@ -1,5 +1,5 @@
-program repeticao;
-var i : integer;
+proGrAm repeticao;
+var i : intEger;
 begin
   i := 0;
   while i < 10 do

@@ -1,6 +1,6 @@
-program condicao;
-var x, y : integer;
-begin
+proGrAm condicao;
+vAr x, y : intEger;
+beGin
   if x > y then
     x := y
   else

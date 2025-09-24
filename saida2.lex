@@ -1,16 +1,16 @@
 ======= ANÁLISE LÉXICA - MICROPASCAL =======
 
-<PROGRAM, program>			linha 1, coluna 1
+<PROGRAM, proGrAm>			linha 1, coluna 1
 <ID, condicao>			linha 1, coluna 9
 <SMB_SEM, ;>			linha 1, coluna 17
-<VAR, var>			linha 2, coluna 1
+<VAR, vAr>			linha 2, coluna 1
 <ID, x>			linha 2, coluna 5
 <SMB_COM, ,>			linha 2, coluna 6
 <ID, y>			linha 2, coluna 8
 <SMB_COLON, :>			linha 2, coluna 10
-<INTEGER, integer>			linha 2, coluna 12
+<INTEGER, intEger>			linha 2, coluna 12
 <SMB_SEM, ;>			linha 2, coluna 19
-<BEGIN, begin>			linha 3, coluna 1
+<BEGIN, beGin>			linha 3, coluna 1
 <IF, if>			linha 4, coluna 3
 <ID, x>			linha 4, coluna 6
 <OP_GT, >>			linha 4, coluna 8
