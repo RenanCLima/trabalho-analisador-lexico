@@ -1,0 +1,11 @@
+program teste6;
+var
+    x : integer;
+begin
+    x = 10
+end.program teste6;
+var
+    x : integer;
+begin
+    x = 10
+end.

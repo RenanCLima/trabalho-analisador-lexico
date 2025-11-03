@@ -399,7 +399,409 @@ Token proximo_token(Scanner *sc) {
     }
 }
 
-// ======================================= função main que testa os códigos =======================================
+// --------------------------------------- Variáveis Globais para Análise Sintática ---------------------------------------
+Token token_atual;
+FILE *arquivo_saida;
+int erro_sintatico = 0;
+int nivel_producao = 0;
+
+// --------------------------------------- Declarações de Funções Sintáticas ---------------------------------------
+void casa_token(TipoToken esperado, Scanner *sc);
+void proximo_token_sintatico(Scanner *sc);
+void erro_sintatico_msg(const char *msg);
+void imprimir_producao(const char *regra);
+
+// Funções para cada não-terminal da gramática
+void programa(Scanner *sc);
+void bloco(Scanner *sc);
+void parte_declaracao_variaveis(Scanner *sc);
+void declaracao_variaveis(Scanner *sc);
+void lista_identificadores(Scanner *sc);
+void tipo(Scanner *sc);
+void comando_composto(Scanner *sc);
+void comando(Scanner *sc);
+void atribuicao(Scanner *sc);
+void comando_condicional(Scanner *sc);
+void comando_repetitivo(Scanner *sc);
+void expressao(Scanner *sc);
+void relacao(Scanner *sc);
+void expressao_simples(Scanner *sc);
+void termo(Scanner *sc);
+void fator(Scanner *sc);
+void variavel(Scanner *sc);
+
+// ======================================= Funções de Análise Sintática =======================================
+
+// Imprime regra de produção com indentação
+void imprimir_producao(const char *regra) {
+    for (int i = 0; i < nivel_producao; i++) {
+        fprintf(arquivo_saida, "  ");
+    }
+    fprintf(arquivo_saida, "%s\n", regra);
+}
+
+// Reporta erro sintático
+void erro_sintatico_msg(const char *msg) {
+    fprintf(arquivo_saida, "\nERRO SINTÁTICO:\n");
+    fprintf(arquivo_saida, "%d: %s\n", token_atual.linha, msg);
+    fprintf(stderr, "\nERRO SINTÁTICO:\n");
+    fprintf(stderr, "%d: %s\n", token_atual.linha, msg);
+    erro_sintatico = 1;
+}
+
+// Lê o próximo token
+void proximo_token_sintatico(Scanner *sc) {
+    if (token_atual.lexema) {
+        free(token_atual.lexema);
+    }
+    token_atual = proximo_token(sc);
+}
+
+// Casa o token esperado com o token atual
+void casa_token(TipoToken esperado, Scanner *sc) {
+    if (erro_sintatico) return;
+    
+    if (token_atual.tipo == esperado) {
+        fprintf(arquivo_saida, "Token casado: <%s, %s> na linha %d\n", 
+                nome_token(token_atual.tipo), token_atual.lexema, token_atual.linha);
+        proximo_token_sintatico(sc);
+    } else if (token_atual.tipo == END_TOKEN) {
+        erro_sintatico_msg("fim de arquivo não esperado.");
+    } else {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "token não esperado [%s]. Esperado: %s", 
+                 token_atual.lexema, nome_token(esperado));
+        erro_sintatico_msg(msg);
+    }
+}
+
+// <programa> ::= program <identificador> ; <bloco> .
+void programa(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<programa> ::= program <identificador> ; <bloco> .");
+    nivel_producao++;
+    
+    casa_token(KW_PROGRAM, sc);
+    casa_token(ID, sc);
+    casa_token(SMB_SEM, sc);
+    bloco(sc);
+    casa_token(SMB_DOT, sc);
+    
+    nivel_producao--;
+}
+
+// <bloco> ::= <parte de declarações de variáveis> <comando composto>
+void bloco(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<bloco> ::= <parte de declarações de variáveis> <comando composto>");
+    nivel_producao++;
+    
+    parte_declaracao_variaveis(sc);
+    comando_composto(sc);
+    
+    nivel_producao--;
+}
+
+// <parte de declarações de variáveis> ::= { var <declaração de variáveis> {; <declaração de variáveis>} ; }
+void parte_declaracao_variaveis(Scanner *sc) {
+    if (erro_sintatico) return;
+    
+    if (token_atual.tipo == KW_VAR) {
+        imprimir_producao("<parte de declarações de variáveis> ::= var <declaração de variáveis> {; <declaração de variáveis>} ;");
+        nivel_producao++;
+        
+        casa_token(KW_VAR, sc);
+        declaracao_variaveis(sc);
+        
+        while (token_atual.tipo == SMB_SEM && !erro_sintatico) {
+            casa_token(SMB_SEM, sc);
+            if (token_atual.tipo == ID) {
+                declaracao_variaveis(sc);
+            } else {
+                break;
+            }
+        }
+        
+        nivel_producao--;
+    } else {
+        imprimir_producao("<parte de declarações de variáveis> ::= <vazio>");
+    }
+}
+
+// <declaração de variáveis> ::= <lista de identificadores> : <tipo>
+void declaracao_variaveis(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<declaração de variáveis> ::= <lista de identificadores> : <tipo>");
+    nivel_producao++;
+    
+    lista_identificadores(sc);
+    casa_token(SMB_COLON, sc);
+    tipo(sc);
+    
+    nivel_producao--;
+}
+
+// <lista de identificadores> ::= <identificador> { , <identificador> }
+void lista_identificadores(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<lista de identificadores> ::= <identificador> { , <identificador> }");
+    nivel_producao++;
+    
+    casa_token(ID, sc);
+    
+    while (token_atual.tipo == SMB_COM && !erro_sintatico) {
+        casa_token(SMB_COM, sc);
+        casa_token(ID, sc);
+    }
+    
+    nivel_producao--;
+}
+
+// <tipo> ::= integer | real
+void tipo(Scanner *sc) {
+    if (erro_sintatico) return;
+    
+    if (token_atual.tipo == KW_INTEGER) {
+        imprimir_producao("<tipo> ::= integer");
+        nivel_producao++;
+        casa_token(KW_INTEGER, sc);
+        nivel_producao--;
+    } else if (token_atual.tipo == KW_REAL) {
+        imprimir_producao("<tipo> ::= real");
+        nivel_producao++;
+        casa_token(KW_REAL, sc);
+        nivel_producao--;
+    } else {
+        erro_sintatico_msg("tipo esperado (integer ou real)");
+    }
+}
+
+// <comando composto> ::= begin <comando> ; { <comando> ; } end
+void comando_composto(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<comando composto> ::= begin <comando> ; { <comando> ; } end");
+    nivel_producao++;
+    
+    casa_token(KW_BEGIN, sc);
+    comando(sc);
+    casa_token(SMB_SEM, sc);
+    
+    while (token_atual.tipo != KW_END && token_atual.tipo != END_TOKEN && !erro_sintatico) {
+        comando(sc);
+        casa_token(SMB_SEM, sc);
+    }
+    
+    casa_token(KW_END, sc);
+    
+    nivel_producao--;
+}
+
+// <comando> ::= <atribuição> | <comando composto> | <comando condicional> | <comando repetitivo>
+void comando(Scanner *sc) {
+    if (erro_sintatico) return;
+    
+    if (token_atual.tipo == ID) {
+        imprimir_producao("<comando> ::= <atribuição>");
+        nivel_producao++;
+        atribuicao(sc);
+        nivel_producao--;
+    } else if (token_atual.tipo == KW_BEGIN) {
+        imprimir_producao("<comando> ::= <comando composto>");
+        nivel_producao++;
+        comando_composto(sc);
+        nivel_producao--;
+    } else if (token_atual.tipo == KW_IF) {
+        imprimir_producao("<comando> ::= <comando condicional>");
+        nivel_producao++;
+        comando_condicional(sc);
+        nivel_producao--;
+    } else if (token_atual.tipo == KW_WHILE) {
+        imprimir_producao("<comando> ::= <comando repetitivo>");
+        nivel_producao++;
+        comando_repetitivo(sc);
+        nivel_producao--;
+    } else {
+        erro_sintatico_msg("comando esperado");
+    }
+}
+
+// <atribuição> ::= <variável> := <expressão>
+void atribuicao(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<atribuição> ::= <variável> := <expressão>");
+    nivel_producao++;
+    
+    variavel(sc);
+    casa_token(OP_ASS, sc);
+    expressao(sc);
+    
+    nivel_producao--;
+}
+
+// <comando condicional> ::= if <expressão> then <comando> [ else <comando> ]
+void comando_condicional(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<comando condicional> ::= if <expressão> then <comando> [ else <comando> ]");
+    nivel_producao++;
+    
+    casa_token(KW_IF, sc);
+    expressao(sc);
+    casa_token(KW_THEN, sc);
+    comando(sc);
+    
+    if (token_atual.tipo == KW_ELSE) {
+        casa_token(KW_ELSE, sc);
+        comando(sc);
+    }
+    
+    nivel_producao--;
+}
+
+// <comando repetitivo> ::= while <expressão> do <comando>
+void comando_repetitivo(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<comando repetitivo> ::= while <expressão> do <comando>");
+    nivel_producao++;
+    
+    casa_token(KW_WHILE, sc);
+    expressao(sc);
+    casa_token(KW_DO, sc);
+    comando(sc);
+    
+    nivel_producao--;
+}
+
+// <expressão> ::= <expressão simples> [ <relação> <expressão simples> ]
+void expressao(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<expressão> ::= <expressão simples> [ <relação> <expressão simples> ]");
+    nivel_producao++;
+    
+    expressao_simples(sc);
+    
+    if (token_atual.tipo == OP_EQ || token_atual.tipo == OP_NE || 
+        token_atual.tipo == OP_LT || token_atual.tipo == OP_LE || 
+        token_atual.tipo == OP_GT || token_atual.tipo == OP_GE) {
+        relacao(sc);
+        expressao_simples(sc);
+    }
+    
+    nivel_producao--;
+}
+
+// <relação> ::= = | <> | < | <= | >= | >
+void relacao(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<relação> ::= = | <> | < | <= | >= | >");
+    nivel_producao++;
+    
+    if (token_atual.tipo == OP_EQ) {
+        casa_token(OP_EQ, sc);
+    } else if (token_atual.tipo == OP_NE) {
+        casa_token(OP_NE, sc);
+    } else if (token_atual.tipo == OP_LT) {
+        casa_token(OP_LT, sc);
+    } else if (token_atual.tipo == OP_LE) {
+        casa_token(OP_LE, sc);
+    } else if (token_atual.tipo == OP_GT) {
+        casa_token(OP_GT, sc);
+    } else if (token_atual.tipo == OP_GE) {
+        casa_token(OP_GE, sc);
+    }
+    
+    nivel_producao--;
+}
+
+// <expressão simples> ::= [ + | - ] <termo> { ( + | - ) <termo> }
+void expressao_simples(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<expressão simples> ::= [ + | - ] <termo> { ( + | - ) <termo> }");
+    nivel_producao++;
+    
+    if (token_atual.tipo == OP_AD || token_atual.tipo == OP_MIN) {
+        if (token_atual.tipo == OP_AD) {
+            casa_token(OP_AD, sc);
+        } else {
+            casa_token(OP_MIN, sc);
+        }
+    }
+    
+    termo(sc);
+    
+    while ((token_atual.tipo == OP_AD || token_atual.tipo == OP_MIN) && !erro_sintatico) {
+        if (token_atual.tipo == OP_AD) {
+            casa_token(OP_AD, sc);
+        } else {
+            casa_token(OP_MIN, sc);
+        }
+        termo(sc);
+    }
+    
+    nivel_producao--;
+}
+
+// <termo> ::= <fator> { ( * | / ) <fator> }
+void termo(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<termo> ::= <fator> { ( * | / ) <fator> }");
+    nivel_producao++;
+    
+    fator(sc);
+    
+    while ((token_atual.tipo == OP_MUL || token_atual.tipo == OP_DIV) && !erro_sintatico) {
+        if (token_atual.tipo == OP_MUL) {
+            casa_token(OP_MUL, sc);
+        } else {
+            casa_token(OP_DIV, sc);
+        }
+        fator(sc);
+    }
+    
+    nivel_producao--;
+}
+
+// <fator> ::= <variável> | <número> | ( <expressão> )
+void fator(Scanner *sc) {
+    if (erro_sintatico) return;
+    
+    if (token_atual.tipo == ID) {
+        imprimir_producao("<fator> ::= <variável>");
+        nivel_producao++;
+        variavel(sc);
+        nivel_producao--;
+    } else if (token_atual.tipo == NUM_INT || token_atual.tipo == NUM_REAL) {
+        imprimir_producao("<fator> ::= <número>");
+        nivel_producao++;
+        if (token_atual.tipo == NUM_INT) {
+            casa_token(NUM_INT, sc);
+        } else {
+            casa_token(NUM_REAL, sc);
+        }
+        nivel_producao--;
+    } else if (token_atual.tipo == SMB_OPA) {
+        imprimir_producao("<fator> ::= ( <expressão> )");
+        nivel_producao++;
+        casa_token(SMB_OPA, sc);
+        expressao(sc);
+        casa_token(SMB_CPA, sc);
+        nivel_producao--;
+    } else {
+        erro_sintatico_msg("fator esperado (variável, número ou expressão entre parênteses)");
+    }
+}
+
+// <variável> ::= <identificador>
+void variavel(Scanner *sc) {
+    if (erro_sintatico) return;
+    imprimir_producao("<variável> ::= <identificador>");
+    nivel_producao++;
+    
+    casa_token(ID, sc);
+    
+    nivel_producao--;
+}
+
+// ======================================= função main =======================================
 int main(int argc, char *argv[]) {
     if (argc < 3) {
         printf("Uso: %s <arquivo_entrada.pas> <arquivo_saida.lex>\n", argv[0]);
@@ -415,41 +817,65 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    FILE *out = fopen(argv[2], "w");
-    if (!out) {
-        printf("Erro ao criar o arquivo de saída: %s\n", argv[2]);
+    // Lê todo o conteúdo do arquivo
+    char *codigo_fonte = (char*)malloc(MAX_SOURCE_SIZE);
+    if (!codigo_fonte) {
+        printf("Erro ao alocar memória\n");
         fclose(fp);
         return 1;
     }
 
-    fprintf(out, "======= ANÁLISE LÉXICA - MICROPASCAL =======\n\n");
+    size_t total = 0;
+    size_t lido;
+    while ((lido = fread(codigo_fonte + total, 1, MAX_SOURCE_SIZE - total - 1, fp)) > 0) {
+        total += lido;
+    }
+    codigo_fonte[total] = '\0';
+    fclose(fp);
 
-    char linha[1024];
-    int num_linha = 1;
+    arquivo_saida = fopen(argv[2], "w");
+    if (!arquivo_saida) {
+        printf("Erro ao criar o arquivo de saída: %s\n", argv[2]);
+        free(codigo_fonte);
+        return 1;
+    }
 
-    while (fgets(linha, sizeof(linha), fp)) {
-        Scanner sc;
-        iniciar(&sc, linha, num_linha);
+    fprintf(arquivo_saida, "======= ANÁLISE SINTÁTICA - MICROPASCAL =======\n\n");
+    fprintf(arquivo_saida, "=== DERIVAÇÕES E REGRAS DE PRODUÇÃO ===\n\n");
 
-        for (;;) {
-            Token t = proximo_token(&sc);
-            if (t.tipo != END_TOKEN) {
-                fprintf(out, "<%s, %s>\t\t\tlinha %d, coluna %d\n",
-                    nome_token(t.tipo), t.lexema, t.linha, t.coluna);
-            }
-            free(t.lexema);
-            if (t.tipo == END_TOKEN || t.tipo == ERROR_TOKEN) break;
-        }
+    // Inicializa o scanner com todo o código fonte
+    Scanner sc;
+    iniciar(&sc, codigo_fonte, 1);
 
-        num_linha++;
+    // Lê o primeiro token
+    token_atual.lexema = NULL;
+    proximo_token_sintatico(&sc);
+
+    // Inicia a análise sintática
+    programa(&sc);
+
+    // Verifica se chegou ao fim do arquivo
+    if (!erro_sintatico && token_atual.tipo != END_TOKEN) {
+        erro_sintatico_msg("fim de arquivo esperado");
+    }
+
+    if (!erro_sintatico) {
+        fprintf(arquivo_saida, "\n\n=== ANÁLISE SINTÁTICA CONCLUÍDA COM SUCESSO ===\n");
+        printf("Análise sintática concluída com sucesso!\n");
+    } else {
+        fprintf(arquivo_saida, "\n\n=== ANÁLISE SINTÁTICA CONCLUÍDA COM ERROS ===\n");
+        printf("Análise sintática concluída com erros. Verifique o arquivo de saída.\n");
     }
 
     // Imprime a tabela de símbolos no final
-    imprimir_tabela_simbolos(out);
+    imprimir_tabela_simbolos(arquivo_saida);
 
-    fclose(fp);
-    fclose(out);
-    printf("Análise léxica concluída. Tokens salvos em '%s'.\n", argv[2]);
-    printf("Tabela de símbolos também foi salva no arquivo.\n");
-    return 0;
+    if (token_atual.lexema) {
+        free(token_atual.lexema);
+    }
+    free(codigo_fonte);
+    fclose(arquivo_saida);
+    
+    printf("Resultado salvo em '%s'.\n", argv[2]);
+    return erro_sintatico ? 1 : 0;
 }
