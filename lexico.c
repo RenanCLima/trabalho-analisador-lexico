@@ -141,7 +141,7 @@ void adicionar_identificador_ts(const char *lexema) {
 }
 
 void imprimir_tabela_simbolos(FILE *out) {
-    fprintf(out, "\n======= TABELA DE SÍMBOLOS =======\n");
+    fprintf(out, "\n======= TABELA DE SIMBOLOS =======\n");
     for (int i = 0; i < tabela_simbolos.tamanho; i++) {
         fprintf(out, "%s - %s\n", tabela_simbolos.entradas[i].lexema, nome_token(tabela_simbolos.entradas[i].tipo));
     }
@@ -191,7 +191,7 @@ char* nome_token(TipoToken t) {
 
 char *str_ndup(const char *s, size_t n) {
     char *p = (char*)malloc(n + 1);
-    if (!p) { fprintf(stderr, "Memória insuficiente\n"); exit(1); }
+    if (!p) { fprintf(stderr, "Memoria insuficiente\n"); exit(1); }
     memcpy(p, s, n); p[n] = '\0';
     return p;
 }
@@ -291,7 +291,7 @@ Token coletar_operador(Scanner *sc) {
     }
     if (c == '=') return criar_token_texto(OP_EQ, "=", 1, lin, col);
     if (c == ':') return criar_token_texto(SMB_COLON, ":", 1, lin, col);
-    return token_erro_msg(sc, "Operador inválido");
+    return token_erro_msg(sc, "Operador invalido");
 }
 
 Token coletar_string(Scanner *sc) {
@@ -302,7 +302,7 @@ Token coletar_string(Scanner *sc) {
         avancar(sc);
     }
     if (sc->caractere == '\n' || sc->caractere == '\0') {
-        return token_erro_msg(sc, "String não-fechada");
+        return token_erro_msg(sc, "String nao-fechada");
     }
     avancar(sc);
     size_t len = sc->i - ini;
@@ -331,14 +331,14 @@ Token proximo_token(Scanner *sc) {
         case '}': return token_simples(sc, SMB_CBC);
         default: {
             char msg[64];
-            snprintf(msg, sizeof(msg), "Caractere inválido: '%c'", sc->caractere);
+            snprintf(msg, sizeof(msg), "Caractere invalido: '%c'", sc->caractere);
             avancar(sc);
             return token_erro_msg(sc, msg);
         }
     }
 }
 
-// ======================================= ANÁLISE SINTÁTICA =======================================
+// ======================================= ANALISE SINTATICA =======================================
 
 void imprimir_producao(const char *regra) {
     for (int i = 0; i < nivel_producao; i++) fprintf(arquivo_saida, "  ");
@@ -346,9 +346,9 @@ void imprimir_producao(const char *regra) {
 }
 
 void erro_sintatico_msg(const char *msg) {
-    fprintf(arquivo_saida, "\n❌ ERRO SINTÁTICO:\n");
+    fprintf(arquivo_saida, "\nERRO SINTATICO:\n");
     fprintf(arquivo_saida, "%d: %s\n", token_atual.linha, msg);
-    fprintf(stderr, "\n❌ ERRO SINTÁTICO:\n");
+    fprintf(stderr, "\nERRO SINTATICO:\n");
     fprintf(stderr, "%d: %s\n", token_atual.linha, msg);
     erro_sintatico = 1;
 }
@@ -361,14 +361,14 @@ void proximo_token_sintatico(Scanner *sc) {
 void casa_token(TipoToken esperado, Scanner *sc) {
     if (erro_sintatico) return;
     if (token_atual.tipo == esperado) {
-        fprintf(arquivo_saida, "✓ Token casado: <%s, %s> na linha %d\n", 
+        fprintf(arquivo_saida, "Token casado: <%s, %s> na linha %d\n", 
                 nome_token(token_atual.tipo), token_atual.lexema, token_atual.linha);
         proximo_token_sintatico(sc);
     } else if (token_atual.tipo == END_TOKEN) {
-        erro_sintatico_msg("fim de arquivo não esperado.");
+        erro_sintatico_msg("fim de arquivo nao esperado.");
     } else {
         char msg[256];
-        snprintf(msg, sizeof(msg), "token não esperado [%s]. Esperado: %s", 
+        snprintf(msg, sizeof(msg), "token nao esperado [%s]. Esperado: %s", 
                  token_atual.lexema, nome_token(esperado));
         erro_sintatico_msg(msg);
     }
@@ -376,7 +376,7 @@ void casa_token(TipoToken esperado, Scanner *sc) {
 
 void programa(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("📘 <programa> ::= program <identificador> ; <bloco> .");
+    imprimir_producao("<programa> ::= program <identificador> ; <bloco> .");
     nivel_producao++;
     casa_token(KW_PROGRAM, sc);
     casa_token(ID, sc);
@@ -388,7 +388,7 @@ void programa(Scanner *sc) {
 
 void bloco(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("📦 <bloco> ::= <parte de declarações de variáveis> <comando composto>");
+    imprimir_producao("<bloco> ::= <parte de declaracoes de variaveis> <comando composto>");
     nivel_producao++;
     parte_declaracao_variaveis(sc);
     comando_composto(sc);
@@ -398,7 +398,7 @@ void bloco(Scanner *sc) {
 void parte_declaracao_variaveis(Scanner *sc) {
     if (erro_sintatico) return;
     if (token_atual.tipo == KW_VAR) {
-        imprimir_producao("📋 <parte de declarações de variáveis> ::= var ...");
+        imprimir_producao("<parte de declaracoes de variaveis> ::= var <declaracao de variaveis> {; <declaracao de variaveis>} ;");
         nivel_producao++;
         casa_token(KW_VAR, sc);
         declaracao_variaveis(sc);
@@ -409,13 +409,13 @@ void parte_declaracao_variaveis(Scanner *sc) {
         }
         nivel_producao--;
     } else {
-        imprimir_producao("📋 <parte de declarações de variáveis> ::= <vazio>");
+        imprimir_producao("<parte de declaracoes de variaveis> ::= <vazio>");
     }
 }
 
 void declaracao_variaveis(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("📝 <declaração de variáveis> ::= <lista de identificadores> : <tipo>");
+    imprimir_producao("<declaracao de variaveis> ::= <lista de identificadores> : <tipo>");
     nivel_producao++;
     lista_identificadores(sc);
     casa_token(SMB_COLON, sc);
@@ -425,7 +425,7 @@ void declaracao_variaveis(Scanner *sc) {
 
 void lista_identificadores(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("🔤 <lista de identificadores> ::= <identificador> { , <identificador> }");
+    imprimir_producao("<lista de identificadores> ::= <identificador> { , <identificador> }");
     nivel_producao++;
     casa_token(ID, sc);
     while (token_atual.tipo == SMB_COM && !erro_sintatico) {
@@ -438,12 +438,12 @@ void lista_identificadores(Scanner *sc) {
 void tipo(Scanner *sc) {
     if (erro_sintatico) return;
     if (token_atual.tipo == KW_INTEGER) {
-        imprimir_producao("🔢 <tipo> ::= integer");
+        imprimir_producao("<tipo> ::= integer");
         nivel_producao++;
         casa_token(KW_INTEGER, sc);
         nivel_producao--;
     } else if (token_atual.tipo == KW_REAL) {
-        imprimir_producao("🔢 <tipo> ::= real");
+        imprimir_producao("<tipo> ::= real");
         nivel_producao++;
         casa_token(KW_REAL, sc);
         nivel_producao--;
@@ -454,7 +454,7 @@ void tipo(Scanner *sc) {
 
 void comando_composto(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("⚙️ <comando composto> ::= begin <comando> ; { <comando> ; } end");
+    imprimir_producao("<comando composto> ::= begin <comando> ; { <comando> ; } end");
     nivel_producao++;
     casa_token(KW_BEGIN, sc);
     comando(sc);
@@ -470,16 +470,16 @@ void comando_composto(Scanner *sc) {
 void comando(Scanner *sc) {
     if (erro_sintatico) return;
     if (token_atual.tipo == ID) {
-        imprimir_producao("➡️ <comando> ::= <atribuição>");
+        imprimir_producao("<comando> ::= <atribuicao>");
         nivel_producao++; atribuicao(sc); nivel_producao--;
     } else if (token_atual.tipo == KW_BEGIN) {
-        imprimir_producao("➡️ <comando> ::= <comando composto>");
+        imprimir_producao("<comando> ::= <comando composto>");
         nivel_producao++; comando_composto(sc); nivel_producao--;
     } else if (token_atual.tipo == KW_IF) {
-        imprimir_producao("➡️ <comando> ::= <comando condicional>");
+        imprimir_producao("<comando> ::= <comando condicional>");
         nivel_producao++; comando_condicional(sc); nivel_producao--;
     } else if (token_atual.tipo == KW_WHILE) {
-        imprimir_producao("➡️ <comando> ::= <comando repetitivo>");
+        imprimir_producao("<comando> ::= <comando repetitivo>");
         nivel_producao++; comando_repetitivo(sc); nivel_producao--;
     } else {
         erro_sintatico_msg("comando esperado");
@@ -488,7 +488,7 @@ void comando(Scanner *sc) {
 
 void atribuicao(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("📌 <atribuição> ::= <variável> := <expressão>");
+    imprimir_producao("<atribuicao> ::= <variavel> := <expressao>");
     nivel_producao++;
     variavel(sc);
     casa_token(OP_ASS, sc);
@@ -498,7 +498,7 @@ void atribuicao(Scanner *sc) {
 
 void comando_condicional(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("🔀 <comando condicional> ::= if <expressão> then <comando> [else]");
+    imprimir_producao("<comando condicional> ::= if <expressao> then <comando> [ else <comando> ]");
     nivel_producao++;
     casa_token(KW_IF, sc);
     expressao(sc);
@@ -513,7 +513,7 @@ void comando_condicional(Scanner *sc) {
 
 void comando_repetitivo(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("🔁 <comando repetitivo> ::= while <expressão> do <comando>");
+    imprimir_producao("<comando repetitivo> ::= while <expressao> do <comando>");
     nivel_producao++;
     casa_token(KW_WHILE, sc);
     expressao(sc);
@@ -524,7 +524,7 @@ void comando_repetitivo(Scanner *sc) {
 
 void expressao(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("🧮 <expressão> ::= <expressão simples> [<relação> <expressão simples>]");
+    imprimir_producao("<expressao> ::= <expressao simples> [ <relacao> <expressao simples> ]");
     nivel_producao++;
     expressao_simples(sc);
     if (token_atual.tipo == OP_EQ || token_atual.tipo == OP_NE || 
@@ -538,7 +538,7 @@ void expressao(Scanner *sc) {
 
 void relacao(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("⚖️ <relação> ::= = | <> | < | <= | >= | >");
+    imprimir_producao("<relacao> ::= = | <> | < | <= | >= | >");
     nivel_producao++;
     if (token_atual.tipo == OP_EQ) casa_token(OP_EQ, sc);
     else if (token_atual.tipo == OP_NE) casa_token(OP_NE, sc);
@@ -551,7 +551,7 @@ void relacao(Scanner *sc) {
 
 void expressao_simples(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("➕ <expressão simples> ::= [+|-] <termo> {(+|-) <termo>}");
+    imprimir_producao("<expressao simples> ::= [ + | - ] <termo> { ( + | - ) <termo> }");
     nivel_producao++;
     if (token_atual.tipo == OP_AD || token_atual.tipo == OP_MIN) {
         if (token_atual.tipo == OP_AD) casa_token(OP_AD, sc);
@@ -568,7 +568,7 @@ void expressao_simples(Scanner *sc) {
 
 void termo(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("✖️ <termo> ::= <fator> {(*|/) <fator>}");
+    imprimir_producao("<termo> ::= <fator> { ( * | / ) <fator> }");
     nivel_producao++;
     fator(sc);
     while ((token_atual.tipo == OP_MUL || token_atual.tipo == OP_DIV) && !erro_sintatico) {
@@ -582,29 +582,29 @@ void termo(Scanner *sc) {
 void fator(Scanner *sc) {
     if (erro_sintatico) return;
     if (token_atual.tipo == ID) {
-        imprimir_producao("🔷 <fator> ::= <variável>");
+        imprimir_producao("<fator> ::= <variavel>");
         nivel_producao++; variavel(sc); nivel_producao--;
     } else if (token_atual.tipo == NUM_INT || token_atual.tipo == NUM_REAL) {
-        imprimir_producao("🔢 <fator> ::= <número>");
+        imprimir_producao("<fator> ::= <numero>");
         nivel_producao++;
         if (token_atual.tipo == NUM_INT) casa_token(NUM_INT, sc);
         else casa_token(NUM_REAL, sc);
         nivel_producao--;
     } else if (token_atual.tipo == SMB_OPA) {
-        imprimir_producao("🔷 <fator> ::= ( <expressão> )");
+        imprimir_producao("<fator> ::= ( <expressao> )");
         nivel_producao++;
         casa_token(SMB_OPA, sc);
         expressao(sc);
         casa_token(SMB_CPA, sc);
         nivel_producao--;
     } else {
-        erro_sintatico_msg("fator esperado (variável, número ou expressão)");
+        erro_sintatico_msg("fator esperado (variavel, numero ou expressao)");
     }
 }
 
 void variavel(Scanner *sc) {
     if (erro_sintatico) return;
-    imprimir_producao("🆔 <variável> ::= <identificador>");
+    imprimir_producao("<variavel> ::= <identificador>");
     nivel_producao++;
     casa_token(ID, sc);
     nivel_producao--;
@@ -640,10 +640,10 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    fprintf(arquivo_saida, "╔════════════════════════════════════════════════╗\n");
-    fprintf(arquivo_saida, "║   ANÁLISE SINTÁTICA - MICROPASCAL             ║\n");
-    fprintf(arquivo_saida, "╚════════════════════════════════════════════════╝\n\n");
-    fprintf(arquivo_saida, "=== DERIVAÇÕES E REGRAS DE PRODUÇÃO ===\n\n");
+    fprintf(arquivo_saida, "======================================\n");
+    fprintf(arquivo_saida, "   ANALISE SINTATICA - MICROPASCAL   \n");
+    fprintf(arquivo_saida, "======================================\n\n");
+    fprintf(arquivo_saida, "=== DERIVACOES E REGRAS DE PRODUCAO ===\n\n");
 
     Scanner sc;
     iniciar(&sc, codigo, 1);
@@ -657,11 +657,11 @@ int main(int argc, char *argv[]) {
     }
 
     if (!erro_sintatico) {
-        fprintf(arquivo_saida, "\n\n✅ ANÁLISE SINTÁTICA CONCLUÍDA COM SUCESSO!\n");
-        printf("✅ Análise sintática concluída com sucesso!\n");
+        fprintf(arquivo_saida, "\n\n=== ANALISE SINTATICA CONCLUIDA COM SUCESSO ===\n");
+        printf("Analise sintatica concluida com sucesso!\n");
     } else {
-        fprintf(arquivo_saida, "\n\n❌ ANÁLISE SINTÁTICA COM ERROS\n");
-        printf("❌ Análise sintática com erros. Veja: %s\n", argv[2]);
+        fprintf(arquivo_saida, "\n\n=== ANALISE SINTATICA CONCLUIDA COM ERROS ===\n");
+        printf("Analise sintatica com erros. Veja: %s\n", argv[2]);
     }
 
     imprimir_tabela_simbolos(arquivo_saida);
@@ -670,6 +670,6 @@ int main(int argc, char *argv[]) {
     free(codigo);
     fclose(arquivo_saida);
     
-    printf("📄 Resultado salvo em '%s'\n", argv[2]);
+    printf("Resultado salvo em '%s'\n", argv[2]);
     return erro_sintatico ? 1 : 0;
 }
