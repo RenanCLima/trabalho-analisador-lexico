@@ -1,17 +1,15 @@
-// Para rodar o código no terminal BASH primeiro utilize: gcc lexico.c -o lexico.exe
-// Em seguida utilize no terminal: ./lexico.exe arquivo_entrada.pas arquivo_saida.lex
-// ======================================= imports =======================================
+// ======================================= IMPORTS =======================================
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-// ======================================= Definições =======================================
+// ======================================= DEFINIÇÕES =======================================
 #define MAX_SOURCE_SIZE 10000
 #define MAX_TABELA_SIMBOLOS 1000
 #define MAX_LEXEMA 256
 
-// --------------------------------------- Definições de Variáveis ---------------------------------------
+// --------------------------------------- Enumeração de Tokens ---------------------------------------
 typedef enum {
     // Palavras-chave
     KW_PROGRAM, KW_VAR, KW_INTEGER, KW_REAL, KW_BEGIN, KW_END,
@@ -31,7 +29,7 @@ typedef enum {
     END_TOKEN, ERROR_TOKEN
 } TipoToken;
 
-// --------------------------------------- Definições de structs ---------------------------------------
+// --------------------------------------- Structs ---------------------------------------
 typedef struct {
     TipoToken tipo;
     char *lexema;
@@ -64,6 +62,7 @@ int erro_sintatico = 0;
 int nivel_producao = 0;
 
 // --------------------------------------- Declarações de Funções ---------------------------------------
+// Léxico
 char* nome_token(TipoToken t);
 void inicializar_tabela_simbolos();
 TipoToken buscar_tabela_simbolos(const char *lexema);
@@ -76,14 +75,13 @@ void avancar(Scanner *sc);
 void pular_espacos(Scanner *sc);
 Token token_simples(Scanner *sc, TipoToken tipo);
 Token token_erro_msg(Scanner *sc, const char *msg);
-TipoToken verificar_palavra_chave(const char *lexema);
 Token coletar_identificador(Scanner *sc);
 Token coletar_numero(Scanner *sc);
 Token coletar_operador(Scanner *sc);
 Token coletar_string(Scanner *sc);
 Token proximo_token(Scanner *sc);
 
-// Funções sintáticas
+// Sintático
 void casa_token(TipoToken esperado, Scanner *sc);
 void proximo_token_sintatico(Scanner *sc);
 void erro_sintatico_msg(const char *msg);
@@ -106,7 +104,7 @@ void termo(Scanner *sc);
 void fator(Scanner *sc);
 void variavel(Scanner *sc);
 
-// ======================================= Implementação =======================================
+// ======================================= IMPLEMENTAÇÃO LÉXICO =======================================
 
 void inicializar_tabela_simbolos() {
     tabela_simbolos.tamanho = 0;
@@ -137,6 +135,9 @@ void adicionar_identificador_ts(const char *lexema) {
         strcpy(tabela_simbolos.entradas[tabela_simbolos.tamanho].lexema, lexema);
         tabela_simbolos.entradas[tabela_simbolos.tamanho].tipo = ID;
         tabela_simbolos.tamanho++;
+    } else {
+        fprintf(stderr, "ERRO FATAL: Tabela de simbolos cheia!\n");
+        exit(1);
     }
 }
 
@@ -234,10 +235,6 @@ Token token_simples(Scanner *sc, TipoToken tipo) {
 
 Token token_erro_msg(Scanner *sc, const char *msg) {
     return criar_token_texto(ERROR_TOKEN, msg, strlen(msg), sc->linha, sc->coluna);
-}
-
-TipoToken verificar_palavra_chave(const char *lexema) {
-    return buscar_tabela_simbolos(lexema);
 }
 
 Token coletar_identificador(Scanner *sc) {
@@ -338,7 +335,7 @@ Token proximo_token(Scanner *sc) {
     }
 }
 
-// ======================================= ANALISE SINTATICA =======================================
+// ======================================= IMPLEMENTAÇÃO SINTÁTICA =======================================
 
 void imprimir_producao(const char *regra) {
     for (int i = 0; i < nivel_producao; i++) fprintf(arquivo_saida, "  ");
@@ -397,15 +394,26 @@ void bloco(Scanner *sc) {
 
 void parte_declaracao_variaveis(Scanner *sc) {
     if (erro_sintatico) return;
+    
+    // Gramática: <parte de declarações de variáveis> ::= { var <declaração de variáveis> {; <declaração de variáveis>}; }
     if (token_atual.tipo == KW_VAR) {
-        imprimir_producao("<parte de declaracoes de variaveis> ::= var <declaracao de variaveis> {; <declaracao de variaveis>} ;");
+        imprimir_producao("<parte de declaracoes de variaveis> ::= var <declaração de variáveis> {; <declaração de variáveis>};");
         nivel_producao++;
-        casa_token(KW_VAR, sc);
-        declaracao_variaveis(sc);
-        while (token_atual.tipo == SMB_SEM && !erro_sintatico) {
-            casa_token(SMB_SEM, sc);
-            if (token_atual.tipo == ID) declaracao_variaveis(sc);
-            else break;
+        
+        // Loop para aceitar multiplos blocos 'var' (caso existam, devido as chaves externas da gramatica)
+        // Mas geralmente Pascal tem um só. Seguiremos a lógica:
+        while (token_atual.tipo == KW_VAR && !erro_sintatico) {
+            casa_token(KW_VAR, sc);
+            
+            // Primeira declaração obrigatória
+            declaracao_variaveis(sc);
+            casa_token(SMB_SEM, sc); // Ponto e vírgula obrigatório após declaração
+            
+            // Repetição de outras declarações
+            while (token_atual.tipo == ID && !erro_sintatico) {
+                declaracao_variaveis(sc);
+                casa_token(SMB_SEM, sc); // Ponto e vírgula obrigatório após declaração
+            }
         }
         nivel_producao--;
     } else {
@@ -457,8 +465,12 @@ void comando_composto(Scanner *sc) {
     imprimir_producao("<comando composto> ::= begin <comando> ; { <comando> ; } end");
     nivel_producao++;
     casa_token(KW_BEGIN, sc);
+    
+    // Gramática exige ao menos um comando: <comando>;
     comando(sc);
     casa_token(SMB_SEM, sc);
+    
+    // Loop para comandos subsequentes
     while (token_atual.tipo != KW_END && token_atual.tipo != END_TOKEN && !erro_sintatico) {
         comando(sc);
         casa_token(SMB_SEM, sc);
@@ -613,7 +625,7 @@ void variavel(Scanner *sc) {
 // ======================================= MAIN =======================================
 int main(int argc, char *argv[]) {
     if (argc < 3) {
-        printf("Uso: %s <arquivo_entrada.pas> <arquivo_saida.lex>\n", argv[0]);
+        printf("Uso: %s <arquivo_entrada.pas> <arquivo_saida.txt>\n", argv[0]);
         return 1;
     }
 
@@ -621,11 +633,13 @@ int main(int argc, char *argv[]) {
 
     FILE *fp = fopen(argv[1], "r");
     if (!fp) {
-        printf("Erro ao abrir: %s\n", argv[1]);
+        printf("Erro ao abrir arquivo de entrada: %s\n", argv[1]);
         return 1;
     }
 
     char *codigo = (char*)malloc(MAX_SOURCE_SIZE);
+    if (!codigo) { printf("Erro de alocacao de memoria.\n"); return 1; }
+    
     size_t total = 0, lido;
     while ((lido = fread(codigo + total, 1, MAX_SOURCE_SIZE - total - 1, fp)) > 0) {
         total += lido;
@@ -635,25 +649,25 @@ int main(int argc, char *argv[]) {
 
     arquivo_saida = fopen(argv[2], "w");
     if (!arquivo_saida) {
-        printf("Erro ao criar: %s\n", argv[2]);
+        printf("Erro ao criar arquivo de saida: %s\n", argv[2]);
         free(codigo);
         return 1;
     }
 
     fprintf(arquivo_saida, "======================================\n");
-    fprintf(arquivo_saida, "   ANALISE SINTATICA - MICROPASCAL   \n");
+    fprintf(arquivo_saida, "   ANALISE SINTATICA - MICROPASCAL    \n");
     fprintf(arquivo_saida, "======================================\n\n");
     fprintf(arquivo_saida, "=== DERIVACOES E REGRAS DE PRODUCAO ===\n\n");
 
     Scanner sc;
     iniciar(&sc, codigo, 1);
     token_atual.lexema = NULL;
-    proximo_token_sintatico(&sc);
+    proximo_token_sintatico(&sc); // Lê o primeiro token
 
     programa(&sc);
 
     if (!erro_sintatico && token_atual.tipo != END_TOKEN) {
-        erro_sintatico_msg("fim de arquivo esperado");
+        erro_sintatico_msg("fim de arquivo esperado (tokens sobraram).");
     }
 
     if (!erro_sintatico) {
@@ -661,7 +675,7 @@ int main(int argc, char *argv[]) {
         printf("Analise sintatica concluida com sucesso!\n");
     } else {
         fprintf(arquivo_saida, "\n\n=== ANALISE SINTATICA CONCLUIDA COM ERROS ===\n");
-        printf("Analise sintatica com erros. Veja: %s\n", argv[2]);
+        printf("Analise sintatica encontrou erros. Verifique: %s\n", argv[2]);
     }
 
     imprimir_tabela_simbolos(arquivo_saida);
@@ -670,6 +684,6 @@ int main(int argc, char *argv[]) {
     free(codigo);
     fclose(arquivo_saida);
     
-    printf("Resultado salvo em '%s'\n", argv[2]);
+    printf("Resultado detalhado salvo em '%s'\n", argv[2]);
     return erro_sintatico ? 1 : 0;
 }

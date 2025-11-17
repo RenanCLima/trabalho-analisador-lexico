@@ -1,6 +1,0 @@
-program teste5;
-var
-    x :;
-begin
-    x := 10
-end.

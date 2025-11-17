@@ -1,8 +1,0 @@
-program teste3;
-var
-    contador : integer;
-begin
-    contador := 0;
-    while contador < 10 do
-        contador := contador + 1
-end.
