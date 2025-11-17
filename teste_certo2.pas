@@ -7,5 +7,5 @@ begin
    if nota >= 6.0 then
       nota := nota + extra
    else
-      nota := 0.0
+      nota := 0.0;
 end.

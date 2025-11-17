@@ -1,0 +1,48 @@
+======================================
+   ANALISE SINTATICA - MICROPASCAL    
+======================================
+
+=== DERIVACOES E REGRAS DE PRODUCAO ===
+
+<programa> ::= program <identificador> ; <bloco> .
+Token casado: <PROGRAM, program> na linha 1
+Token casado: <ID, erro02> na linha 1
+Token casado: <SMB_SEM, ;> na linha 1
+  <bloco> ::= <parte de declaracoes de variaveis> <comando composto>
+    <parte de declaracoes de variaveis> ::= var <declaração de variáveis> {; <declaração de variáveis>};
+Token casado: <VAR, var> na linha 2
+      <declaracao de variaveis> ::= <lista de identificadores> : <tipo>
+        <lista de identificadores> ::= <identificador> { , <identificador> }
+Token casado: <ID, x> na linha 3
+Token casado: <SMB_COLON, :> na linha 3
+        <tipo> ::= integer
+Token casado: <INTEGER, integer> na linha 3
+Token casado: <SMB_SEM, ;> na linha 3
+    <comando composto> ::= begin <comando> ; { <comando> ; } end
+Token casado: <BEGIN, begin> na linha 4
+      <comando> ::= <atribuicao>
+        <atribuicao> ::= <variavel> := <expressao>
+          <variavel> ::= <identificador>
+Token casado: <ID, x> na linha 5
+
+ERRO SINTATICO:
+5: token nao esperado [=]. Esperado: OP_ASS
+
+
+=== ANALISE SINTATICA CONCLUIDA COM ERROS ===
+
+======= TABELA DE SIMBOLOS =======
+program - PROGRAM
+var - VAR
+integer - INTEGER
+real - REAL
+begin - BEGIN
+end - END
+if - IF
+then - THEN
+else - ELSE
+while - WHILE
+do - DO
+erro02 - ID
+x - ID
+==================================

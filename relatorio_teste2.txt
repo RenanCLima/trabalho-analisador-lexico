@@ -1,0 +1,112 @@
+======================================
+   ANALISE SINTATICA - MICROPASCAL    
+======================================
+
+=== DERIVACOES E REGRAS DE PRODUCAO ===
+
+<programa> ::= program <identificador> ; <bloco> .
+Token casado: <PROGRAM, program> na linha 1
+Token casado: <ID, teste02> na linha 1
+Token casado: <SMB_SEM, ;> na linha 1
+  <bloco> ::= <parte de declaracoes de variaveis> <comando composto>
+    <parte de declaracoes de variaveis> ::= var <declaração de variáveis> {; <declaração de variáveis>};
+Token casado: <VAR, var> na linha 2
+      <declaracao de variaveis> ::= <lista de identificadores> : <tipo>
+        <lista de identificadores> ::= <identificador> { , <identificador> }
+Token casado: <ID, nota> na linha 3
+Token casado: <SMB_COM, ,> na linha 3
+Token casado: <ID, extra> na linha 3
+Token casado: <SMB_COLON, :> na linha 3
+        <tipo> ::= real
+Token casado: <REAL, real> na linha 3
+Token casado: <SMB_SEM, ;> na linha 3
+    <comando composto> ::= begin <comando> ; { <comando> ; } end
+Token casado: <BEGIN, begin> na linha 4
+      <comando> ::= <atribuicao>
+        <atribuicao> ::= <variavel> := <expressao>
+          <variavel> ::= <identificador>
+Token casado: <ID, nota> na linha 5
+Token casado: <OP_ASS, :=> na linha 5
+          <expressao> ::= <expressao simples> [ <relacao> <expressao simples> ]
+            <expressao simples> ::= [ + | - ] <termo> { ( + | - ) <termo> }
+              <termo> ::= <fator> { ( * | / ) <fator> }
+                <fator> ::= <numero>
+Token casado: <NUM_REAL, 7.5> na linha 5
+Token casado: <SMB_SEM, ;> na linha 5
+      <comando> ::= <atribuicao>
+        <atribuicao> ::= <variavel> := <expressao>
+          <variavel> ::= <identificador>
+Token casado: <ID, extra> na linha 6
+Token casado: <OP_ASS, :=> na linha 6
+          <expressao> ::= <expressao simples> [ <relacao> <expressao simples> ]
+            <expressao simples> ::= [ + | - ] <termo> { ( + | - ) <termo> }
+              <termo> ::= <fator> { ( * | / ) <fator> }
+                <fator> ::= <numero>
+Token casado: <NUM_REAL, 1.0> na linha 6
+Token casado: <SMB_SEM, ;> na linha 6
+      <comando> ::= <comando condicional>
+        <comando condicional> ::= if <expressao> then <comando> [ else <comando> ]
+Token casado: <IF, if> na linha 7
+          <expressao> ::= <expressao simples> [ <relacao> <expressao simples> ]
+            <expressao simples> ::= [ + | - ] <termo> { ( + | - ) <termo> }
+              <termo> ::= <fator> { ( * | / ) <fator> }
+                <fator> ::= <variavel>
+                  <variavel> ::= <identificador>
+Token casado: <ID, nota> na linha 7
+            <relacao> ::= = | <> | < | <= | >= | >
+Token casado: <OP_GE, >=> na linha 7
+            <expressao simples> ::= [ + | - ] <termo> { ( + | - ) <termo> }
+              <termo> ::= <fator> { ( * | / ) <fator> }
+                <fator> ::= <numero>
+Token casado: <NUM_REAL, 6.0> na linha 7
+Token casado: <THEN, then> na linha 7
+          <comando> ::= <atribuicao>
+            <atribuicao> ::= <variavel> := <expressao>
+              <variavel> ::= <identificador>
+Token casado: <ID, nota> na linha 8
+Token casado: <OP_ASS, :=> na linha 8
+              <expressao> ::= <expressao simples> [ <relacao> <expressao simples> ]
+                <expressao simples> ::= [ + | - ] <termo> { ( + | - ) <termo> }
+                  <termo> ::= <fator> { ( * | / ) <fator> }
+                    <fator> ::= <variavel>
+                      <variavel> ::= <identificador>
+Token casado: <ID, nota> na linha 8
+Token casado: <OP_AD, +> na linha 8
+                  <termo> ::= <fator> { ( * | / ) <fator> }
+                    <fator> ::= <variavel>
+                      <variavel> ::= <identificador>
+Token casado: <ID, extra> na linha 8
+Token casado: <ELSE, else> na linha 9
+          <comando> ::= <atribuicao>
+            <atribuicao> ::= <variavel> := <expressao>
+              <variavel> ::= <identificador>
+Token casado: <ID, nota> na linha 10
+Token casado: <OP_ASS, :=> na linha 10
+              <expressao> ::= <expressao simples> [ <relacao> <expressao simples> ]
+                <expressao simples> ::= [ + | - ] <termo> { ( + | - ) <termo> }
+                  <termo> ::= <fator> { ( * | / ) <fator> }
+                    <fator> ::= <numero>
+Token casado: <NUM_REAL, 0.0> na linha 10
+Token casado: <SMB_SEM, ;> na linha 10
+Token casado: <END, end> na linha 11
+Token casado: <SMB_DOT, .> na linha 11
+
+
+=== ANALISE SINTATICA CONCLUIDA COM SUCESSO ===
+
+======= TABELA DE SIMBOLOS =======
+program - PROGRAM
+var - VAR
+integer - INTEGER
+real - REAL
+begin - BEGIN
+end - END
+if - IF
+then - THEN
+else - ELSE
+while - WHILE
+do - DO
+teste02 - ID
+nota - ID
+extra - ID
+==================================
